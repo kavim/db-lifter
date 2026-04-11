@@ -1,0 +1,17 @@
+.cursor/
+dumps/
+
+bin/
+.env
+.env.local
+*.log
+.DS_Store
+coverage.out
+coverage.html
+vendor/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
