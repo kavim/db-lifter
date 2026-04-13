@@ -1,4 +1,4 @@
-module github.com/kevinmacielmedeiros/db-lift
+module github.com/kevinmacielmedeiros/bd-lifter
 
 go 1.25.0
 

@@ -1,4 +1,4 @@
-BINARY_NAME := db-lift
+BINARY_NAME := bd-lifter
 BUILD_DIR   := bin
 VERSION     := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 LDFLAGS     := -s -w -X main.version=$(VERSION)
