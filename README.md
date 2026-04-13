@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logoPNG.png" alt="db-lift logo" width="320" />
+</p>
+
 # db-lift
 
 High-performance CLI tool for restoring MySQL dump files into Docker containers using zero-copy streaming and a modern terminal UI.
