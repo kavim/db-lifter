@@ -9,7 +9,8 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/kevinmacielmedeiros/db-lift/internal/restore"
+	"github.com/kevinmacielmedeiros/db-lifter/internal/restore"
+	"github.com/kevinmacielmedeiros/db-lifter/internal/ronnie"
 )
 
 var (
@@ -37,14 +38,15 @@ type statusMsg restore.Status
 type tickMsg time.Time
 
 type Model struct {
-	cancel   context.CancelFunc
-	statusCh chan restore.Status
-	status   restore.Status
-	spinner  spinner.Model
-	progress progress.Model
-	start    time.Time
-	done     bool
-	width    int
+	cancel    context.CancelFunc
+	statusCh  chan restore.Status
+	status    restore.Status
+	phaseLine string
+	spinner   spinner.Model
+	progress  progress.Model
+	start     time.Time
+	done      bool
+	width     int
 }
 
 func NewModel(statusCh chan restore.Status, cancel context.CancelFunc) Model {
@@ -58,11 +60,12 @@ func NewModel(statusCh chan restore.Status, cancel context.CancelFunc) Model {
 	)
 
 	return Model{
-		cancel:   cancel,
-		statusCh: statusCh,
-		spinner:  s,
-		progress: p,
-		start:    time.Now(),
+		cancel:    cancel,
+		statusCh:  statusCh,
+		phaseLine: ronnie.TUICaptionInit(),
+		spinner:   s,
+		progress:  p,
+		start:     time.Now(),
 	}
 }
 
@@ -93,14 +96,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case statusMsg:
 		m.status = restore.Status(msg)
 		switch m.status.Phase {
-		case restore.PhaseDone, restore.PhaseError:
-			m.done = true
-			return m, tea.Quit
+		case restore.PhaseInit:
+			m.phaseLine = ronnie.TUICaptionInit()
+		case restore.PhaseDrop:
+			m.phaseLine = ronnie.TUICaptionDrop()
 		case restore.PhaseStream:
+			m.phaseLine = ronnie.TUICaptionStream()
 			return m, tea.Batch(
 				waitForStatus(m.statusCh),
 				tickProgress(),
 			)
+		case restore.PhaseDone, restore.PhaseError:
+			m.done = true
+			return m, tea.Quit
 		}
 		return m, waitForStatus(m.statusCh)
 
@@ -139,24 +147,25 @@ func (m Model) Elapsed() time.Duration {
 }
 
 func (m Model) View() string {
-	header := titleStyle.Render("⚡ db-lift")
+	header := titleStyle.Render("⚡ db-lifter")
 	elapsed := dimStyle.Render(fmt.Sprintf("elapsed: %s", time.Since(m.start).Truncate(time.Millisecond)))
 
 	var body string
 
 	switch m.status.Phase {
 	case restore.PhaseInit:
-		body = m.spinner.View() + infoStyle.Render(" Checking container...")
+		body = m.spinner.View() + infoStyle.Render(" "+m.phaseLine)
 
 	case restore.PhaseDrop:
-		body = m.spinner.View() + infoStyle.Render(" Dropping & recreating database...")
+		body = m.spinner.View() + infoStyle.Render(" "+m.phaseLine)
 
 	case restore.PhaseStream:
 		if m.status.Progress != nil && m.status.Progress.Indeterminate() {
 			transferred := formatBytes(m.status.Progress.BytesRead()) + " (size unknown)"
 			body = fmt.Sprintf(
-				"%s Streaming dump... %s\n\n  %s\n\n  %s",
+				"%s %s %s\n\n  %s\n\n  %s",
 				m.spinner.View(),
+				m.phaseLine,
 				infoStyle.Render("—"),
 				m.progress.View(),
 				dimStyle.Render(transferred),
@@ -170,15 +179,16 @@ func (m Model) View() string {
 			transferred = formatBytes(m.status.Progress.BytesRead()) + " / " + formatBytes(m.status.Progress.Total())
 		}
 		body = fmt.Sprintf(
-			"%s Streaming dump... %s\n\n  %s\n\n  %s",
+			"%s %s %s\n\n  %s\n\n  %s",
 			m.spinner.View(),
+			m.phaseLine,
 			infoStyle.Render(fmt.Sprintf("%.1f%%", pct*100)),
 			m.progress.View(),
 			dimStyle.Render(transferred),
 		)
 
 	case restore.PhaseDone:
-		body = successStyle.Render("✔ Restore completed successfully!")
+		body = successStyle.Render(ronnie.TUIDone())
 
 	case restore.PhaseError:
 		body = errorStyle.Render(fmt.Sprintf("✘ Error: %v", m.status.Err))

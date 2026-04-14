@@ -22,7 +22,7 @@ jobs:
         run: go vet ./...
 
       - name: Build
-        run: go build -ldflags "-s -w" -o /tmp/bd-lifter ./cmd/bd-lifter
+        run: go build -ldflags "-s -w" -o /tmp/db-lifter ./cmd/db-lifter
 
       - name: Version flag
-        run: /tmp/bd-lifter --version
+        run: /tmp/db-lifter --version

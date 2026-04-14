@@ -12,11 +12,12 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/joho/godotenv"
+	"github.com/kevinmacielmedeiros/db-lifter/internal/docker"
+	"github.com/kevinmacielmedeiros/db-lifter/internal/progress"
+	"github.com/kevinmacielmedeiros/db-lifter/internal/restore"
+	"github.com/kevinmacielmedeiros/db-lifter/internal/ronnie"
+	"github.com/kevinmacielmedeiros/db-lifter/internal/tui"
 	"github.com/mattn/go-isatty"
-	"github.com/kevinmacielmedeiros/db-lift/internal/docker"
-	"github.com/kevinmacielmedeiros/db-lift/internal/progress"
-	"github.com/kevinmacielmedeiros/db-lift/internal/restore"
-	"github.com/kevinmacielmedeiros/db-lift/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -33,14 +34,14 @@ func (e *exitError) Unwrap() error { return e.err }
 
 func main() {
 	var (
-		params         restore.Params
-		envFile        string
-		noTUI          bool
-		timeout        time.Duration
+		params  restore.Params
+		envFile string
+		noTUI   bool
+		timeout time.Duration
 	)
 
 	rootCmd := &cobra.Command{
-		Use:   "db-lift",
+		Use:   "db-lifter",
 		Short: "High-performance MySQL Docker restore CLI",
 		Long:  "Restores large MySQL dump files into Docker containers using streaming and an optional TUI.",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -162,7 +163,7 @@ func execute(params restore.Params, noTUI bool, timeout time.Duration) error {
 
 	switch final.Phase {
 	case restore.PhaseDone:
-		fmt.Printf("\nRestore completed successfully in %s\n", m.Elapsed())
+		fmt.Printf("\n%s\n", ronnie.PlainCompleted(m.Elapsed()))
 		return nil
 	case restore.PhaseError:
 		fmt.Fprintf(os.Stderr, "\nRestore failed: %v\n", final.Err)
@@ -186,11 +187,11 @@ func runPlain(ctx context.Context, statusCh <-chan restore.Status, start time.Ti
 	for s := range statusCh {
 		switch s.Phase {
 		case restore.PhaseInit:
-			fmt.Fprintln(os.Stderr, "db-lift: checking container...")
+			fmt.Fprintln(os.Stderr, ronnie.PlainChecking())
 		case restore.PhaseDrop:
-			fmt.Fprintln(os.Stderr, "db-lift: dropping and recreating database...")
+			fmt.Fprintln(os.Stderr, ronnie.PlainRecreate())
 		case restore.PhaseStream:
-			fmt.Fprintln(os.Stderr, "db-lift: streaming SQL into MySQL...")
+			fmt.Fprintln(os.Stderr, ronnie.PlainStreaming())
 			if s.Progress != nil {
 				pctx, c := context.WithCancel(context.Background())
 				progressCancel = c
@@ -200,13 +201,13 @@ func runPlain(ctx context.Context, statusCh <-chan restore.Status, start time.Ti
 			if progressCancel != nil {
 				progressCancel()
 			}
-			fmt.Fprintf(os.Stdout, "db-lift: completed in %s\n", time.Since(start).Truncate(time.Millisecond))
+			fmt.Fprintln(os.Stdout, ronnie.PlainCompleted(time.Since(start)))
 			return nil
 		case restore.PhaseError:
 			if progressCancel != nil {
 				progressCancel()
 			}
-			fmt.Fprintf(os.Stderr, "db-lift: %v\n", s.Err)
+			fmt.Fprintf(os.Stderr, "db-lifter: %v\n", s.Err)
 			return s.Err
 		}
 	}
@@ -227,10 +228,10 @@ func plainProgressLoop(ctx context.Context, pr *progress.Reader) {
 			return
 		case <-t.C:
 			if pr.Indeterminate() {
-				fmt.Fprintf(os.Stderr, "\rdb-lift: streamed %s   ", formatBytes(pr.BytesRead()))
+				fmt.Fprintf(os.Stderr, "\rdb-lifter: streamed %s   ", formatBytes(pr.BytesRead()))
 				continue
 			}
-			fmt.Fprintf(os.Stderr, "\rdb-lift: %.1f%%  %s / %s   ",
+			fmt.Fprintf(os.Stderr, "\rdb-lifter: %.1f%%  %s / %s   ",
 				pr.Percent()*100, formatBytes(pr.BytesRead()), formatBytes(pr.Total()))
 		}
 	}

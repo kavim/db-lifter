@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/kevinmacielmedeiros/db-lift/internal/docker"
-	"github.com/kevinmacielmedeiros/db-lift/internal/progress"
+	"github.com/kevinmacielmedeiros/db-lifter/internal/docker"
+	"github.com/kevinmacielmedeiros/db-lifter/internal/progress"
 )
 
 const (

@@ -2,7 +2,7 @@
   <img src="logoPNG.png" alt="db-lifter logo" width="320" />
 </p>
 
-# db-lifterer
+# db-lifter
 
 High-performance CLI tool for restoring MySQL dump files into Docker containers using zero-copy streaming and a modern terminal UI.
 
